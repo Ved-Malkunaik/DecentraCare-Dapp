@@ -1,0 +1,34 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.21s
+     Running unittests src\lib.rs (C:\Users\vedma\OneDrive\Desktop\DecentraCare Dapp\DecentraCareSmartContracts\target\debug\deps\hello_world-df17804e81af7abd.exe)
+
+running 4 tests
+test test::test_security_unauthorized_viewing - should panic ... ok
+test test::test_security_unauthorized_record_addition - should panic ... ok
+test test::test_appointment_and_consultation_flow ... FAILED
+test test::test_complete_healthcare_lifecycle ... ok
+
+failures:
+
+---- test::test_appointment_and_consultation_flow stdout ----
+
+thread 'test::test_appointment_and_consultation_flow' (23336) panicked at C:\Users\vedma\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\soroban-env-host-25.0.1\src\host.rs:907:9:
+HostError: Error(Auth, ExistingValue)
+
+Event log (newest first):
+   0: [Diagnostic Event] topics:[error, Error(Auth, ExistingValue)], data:"escalating error to panic"
+   1: [Diagnostic Event] topics:[error, Error(Auth, ExistingValue)], data:["contract call failed", book_appointment, [CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M]]
+   2: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, topics:[error, Error(Auth, ExistingValue)], data:"caught error from function"
+   3: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, topics:[error, Error(Auth, ExistingValue)], data:"escalating error to panic"
+   4: [Failed Diagnostic Event (not emitted)] contract:CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, topics:[error, Error(Auth, ExistingValue)], data:"frame is already authorized"
+   5: [Diagnostic Event] topics:[fn_call, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM, book_appointment], data:[CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4, CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M]
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Writing test snapshot file for test "test::test_appointment_and_consultation_flow" to "test_snapshots\\test\\test_appointment_and_consultation_flow.1.json".
+
+
+failures:
+    test::test_appointment_and_consultation_flow
+
+test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+error: test failed, to rerun pass `--lib`
