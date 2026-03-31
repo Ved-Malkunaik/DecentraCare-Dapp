@@ -318,6 +318,7 @@ export default function PatientDashboard() {
                 onChange={(e) => setAppointmentData({ ...appointmentData, reason: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/30"
                 placeholder="e.g. Checkup"
+                required
               />
             </div>
             <div className="md:col-span-3">
