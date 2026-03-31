@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { sorobanService } from '../services/sorobanService';
+import { dbService } from '../services/supabaseService';
 import * as snarkjs from 'snarkjs';
 
 export default function DoctorDashboard() {
@@ -57,13 +58,16 @@ export default function DoctorDashboard() {
       setLoadingConsultations(true);
       const onChain = await sorobanService.getConsultationsByDoctor(stellarAddress);
 
+      // Fetch from Database (Supabase)
+      const dbConsults = await dbService.getConsultationsByDoctor(stellarAddress);
+
       // Merge with Simulations
       const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
       const consultSimRaw = JSON.parse(consultSimStr);
 
       const relevantSim = consultSimRaw.filter(c => c.doctor === stellarAddress);
 
-      const combined = [...(onChain || []), ...relevantSim];
+      const combined = [...(onChain || []), ...dbConsults, ...relevantSim];
       setMyConsultations(combined);
     } catch (e) {
       console.warn("Failed to fetch consultations", e);
@@ -72,11 +76,15 @@ export default function DoctorDashboard() {
     }
   };
 
-  const removeConsultation = (prescriptionId) => {
-    // Directly update state and storage for frictionless demo
+  const removeConsultation = async (prescriptionId) => {
+    // 1. Database Update (Supabase)
+    await dbService.deleteConsultation(prescriptionId);
+
+    // 2. Local State Update
     const updatedConsults = myConsultations.filter(c => formatId(c.prescription_id) !== formatId(prescriptionId));
     setMyConsultations(updatedConsults);
 
+    // 3. Simulation Store Update (fallback)
     const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
     let consultSim = JSON.parse(consultSimStr);
     consultSim = consultSim.filter(c => formatId(c.prescription_id) !== formatId(prescriptionId));
@@ -88,6 +96,10 @@ export default function DoctorDashboard() {
       setLoadingPending(true);
       const pendingOnChain = await sorobanService.getPendingAppointments(stellarAddress);
 
+      // Fetch from Database (Supabase)
+      const dbPending = await dbService.getPendingAppointments(stellarAddress);
+      const dbPendingAddrs = dbPending.map(a => a.patient_wallet);
+
       // Merge with Simulation Store
       const pendingSimStr = localStorage.getItem('decentracare_sim_pending') || '[]';
       const pendingSim = JSON.parse(pendingSimStr);
@@ -95,7 +107,7 @@ export default function DoctorDashboard() {
       // Filter for current doctor
       const relevantSim = pendingSim.filter(p => p.doctor === stellarAddress).map(p => p.patient);
 
-      const combined = [...new Set([...pendingOnChain, ...relevantSim])].filter(p => p);
+      const combined = [...new Set([...pendingOnChain, ...dbPendingAddrs, ...relevantSim])].filter(p => p);
       setPendingAppointments(combined);
     } catch (e) {
       console.warn("Failed to fetch pending", e);
@@ -109,6 +121,9 @@ export default function DoctorDashboard() {
     try {
       setLoadingPatients(true);
       const onChainAuthorized = await sorobanService.getAuthorizedPatients(stellarAddress);
+      
+      // Fetch from Database (Supabase)
+      const dbAuthorized = await dbService.getAuthorizedPatients(stellarAddress);
 
       // Extract patients from Consultations (Simulated)
       const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
@@ -120,13 +135,14 @@ export default function DoctorDashboard() {
       const pendingSim = JSON.parse(pendingSimStr);
       const simPendingPatients = pendingSim.filter(p => p.doctor === stellarAddress).map(p => p.patient);
 
-      // Combine all sources: On-chain, Simulated Consultations, Simulated Appointments
+      // Combine all sources: On-chain, Database, Simulated Consultations, Simulated Appointments
       const allPatients = [
         ...(onChainAuthorized || []),
+        ...(dbAuthorized || []),
         ...simConsultPatients,
         ...simPendingPatients
       ];
-      
+
       // Filter unique and valid G... addresses (DRY principle)
       const uniquePatients = [...new Set(allPatients)]
         .filter(p => p && p.startsWith('G'))
@@ -196,7 +212,17 @@ export default function DoctorDashboard() {
       // Progress Step: Confirmed on Testnet
       setSyncStep('confirmed');
 
-      // Step C: Update Local History
+      // Step C: Update Database & Local History
+      await dbService.insertConsultation({
+          doctor_wallet: stellarAddress,
+          patient_wallet: formData.patientAddr,
+          prescription_id: hash,
+          medication: formData.medicines,
+          diagnosis: formData.notes,
+          tx_hash: txResponse.hash,
+          is_simulated: false
+      });
+
       const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
       const consultSim = JSON.parse(consultSimStr);
       consultSim.push({
@@ -245,6 +271,9 @@ export default function DoctorDashboard() {
             // If it's on-chain pending, try to complete it
             try { await sorobanService.completeAppointment(stellarAddress, formData.patientAddr); } catch (e) { }
           }
+
+          // Complete in Database (Supabase)
+          await dbService.completeAppointment(formData.patientAddr, stellarAddress);
 
           // Clear Simulation Record if it exists
           const pendingSimStr = localStorage.getItem('decentracare_sim_pending') || '[]';
@@ -571,7 +600,7 @@ export default function DoctorDashboard() {
 
             <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 flex items-center gap-4 text-[10px] text-slate-500 italic">
               <ShieldCheck className="w-4 h-4 text-emerald-500/50" />
-              Only patients who have specifically authorized your address can be issued prescriptions.
+              Only doctors who have specifically authorized your address can be issued prescriptions.
             </div>
           </div>
         )}
@@ -579,3 +608,4 @@ export default function DoctorDashboard() {
     </div>
   );
 }
+
