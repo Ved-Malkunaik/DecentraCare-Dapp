@@ -2,83 +2,65 @@
 
 DecentraCare is a state-of-the-art decentralized application (DApp) built on the Stellar Soroban blockchain. It redefines healthcare data management by enabling physicians to create immutable, verifiable prescriptions and giving patients complete sovereign control over who can access their clinical data.
 
-![DecentraCare Architecture Placeholder](/placeholder-architecture.png)
 
 ## 🌟 Key Features
 
 - **Role-Based Web3 Authentication:** Secure onboarding process creating separate on-chain identities for 'Doctors' and 'Patients' using Freighter Wallet.
 - **On-chain Consultation Proof:** Every medical visit generates a digitally signed `Consultation Record` mapped sequentially to both the Doctor and Patient.
 - **Immutable Prescriptions:** Medical records are cryptographically hashed via SHA-256 and securely stored. Pharmacies and Insurance companies can rapidly verify the integrity of the record in O(1) time.
-- **Zero-Knowledge Access Control:** Patients grant, view, and revoke temporary access permissions to individual Doctors dynamically.
 - **Stellar Soroban Smart Contracts:** Fully leverages the speed, affordability, and rust-based safety of Soroban.
+  
 
-## 📱 Screenshots
+## 🚀 How to Set up and Run Locally
 
-| Patient Dashboard | Doctor Dashboard | Role Selection |
-| :---: | :---: | :---: |
-| ![Patient View](/placeholder-patient.png) | ![Doctor View](/placeholder-doctor.png) | ![Role Selection](/placeholder-role.png) |
+ ## Pre-Requesits to Run :
 
-## 🚀 How to Run Locally
+ 1. Download Freighter wallet web extension.
+ 2. set up your Freighter Wallet.
+ 3. VS code should be installed
+    
+ ## How To Run :
 
-### Prerequisites
-- Node.js (v18 or higher)
-- Rust and Cargo (`rustup target add wasm32-unknown-unknown`)
-- Soroban CLI installed
-- Freighter Wallet extension configured to **Testnet**
+ open in VS code ----> Go to Terminal ----> cd Frontend ----> Give a command "npm run dev" ----> Run on Localhost (CTRL + click) ----->You're Ready To Go. 🚀 
 
-### 1. Clone & Install
-```bash
-git clone https://github.com/your-username/decentracare-dapp.git
-cd "decentracare-dapp"
-npm install
-```
+ or
 
-### 2. Smart Contract (Optional, if you want to deploy yourself)
-```bash
-cd DecentraCareSmartContracts/contracts/hello-world
-cargo build --target wasm32-unknown-unknown --release
-```
+ simply click on deployed dapp link (deployed via vercel)
 
-### 3. Run the DApp
-```bash
-npm run dev
-```
+ 
+## 📱 Screenshots with working Steps
 
-The application will be available at `http://localhost:5173`.
+<img width="1919" height="911" alt="image" src="https://github.com/user-attachments/assets/6d9ff1b7-7f48-43f1-8235-6039c21ff183" />
 
-## 🧪 Testing
+<img width="1919" height="909" alt="image" src="https://github.com/user-attachments/assets/2c7a714c-c12a-47d4-a197-36ea5e2b4601" />
 
-This project achieved Level-4 Production Readiness using `Vitest`, `@testing-library/react`, and simulated Soroban Contract tests!
+<img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/d61a4a7d-0939-4164-ba46-da753705e0f5" />
 
-### Run Frontend UI Tests
-These tests simulate routing, UI interactions, and simulated transactions:
-```bash
-npm run test
-```
+<img width="1917" height="910" alt="image" src="https://github.com/user-attachments/assets/c7e8ce35-4a41-4934-ac48-0230a66daf5a" />
 
-### Run Smart Contract Tests
-These Rust tests simulate the entire Doctor-Patient lifecycle on an isolated ledger:
-```bash
-cd DecentraCareSmartContracts/contracts/hello-world
-cargo test
-```
 
-## 🔁 CI/CD Pipeline
+## Contract Details :
 
-We utilize **GitHub Actions** to automate our delivery and enforce code quality.
+Contract ID : "CAU65DY66S74TTRKRWYCCAPK7WZCMHP6FBVKZIHU4BPFC56VKTBYMYBI"
 
-The pipeline triggers automatically on every **Push** and **Pull Request** to the `main` branch.
+- View On Stellar :
 
-**Workflow Steps:**
-1. **Checkout:** Clones the repository.
-2. **Setup Node.js:** Initializes a clean V20 Node environment.
-3. **Install Dependencies:** Clean installs all NPM packages.
-4. **Linting:** Enforces ESLint standards (`npm run lint`).
-5. **Testing:** Executes the Vitest test suite (`npm run test`).
-6. **Build Verification:** Compiles and builds the production app to guarantee no bundling errors (`npm run build`).
+<img width="1918" height="902" alt="image" src="https://github.com/user-attachments/assets/d3808791-21c3-45a6-bf38-5742232b62f0" />
 
-If any step fails, the pipeline prevents merging, ensuring that only production-ready code is shipped.
 
----
+## Test Results :
 
-> **Built with ❤️ on Stellar Soroban**
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src\lib.rs (target\debug\deps\hello_world-df17804e81af7abd.exe)
+
+running 5 tests
+test test::test_security_unauthorized_viewing - should panic ... ok
+test test::test_security_unauthorized_record_addition - should panic ... ok
+test test::test_frictionless_onboarding_via_booking ... ok
+test test::test_complete_healthcare_lifecycle ... ok
+test test::test_appointment_and_consultation_flow ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+
+
