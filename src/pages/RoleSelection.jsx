@@ -9,6 +9,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
+import { dbService } from '../services/supabaseService';
 
 const AUTHORIZED_DOCTOR = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
 
@@ -51,6 +52,7 @@ export default function RoleSelection() {
         return;
     }
     
+    await dbService.upsertUser({ wallet_address: stellarAddress, role: 'doctor', name: 'Dr. Vijay Bharne' });
     navigate('/doctor');
   };
 
@@ -69,7 +71,14 @@ export default function RoleSelection() {
         {roles.map((role) => (
           <Card 
             key={role.id}
-            onClick={() => role.id === 'doctor' ? handleDoctorNav() : navigate(role.path)}
+            onClick={async () => {
+                if (role.id === 'doctor') {
+                    await handleDoctorNav();
+                } else {
+                    await dbService.upsertUser({ wallet_address: stellarAddress, role: 'patient' });
+                    navigate(role.path);
+                }
+            }}
             className={`p-8 border-2 border-slate-900 bg-slate-900/40 hover:bg-slate-900/80 transition-all cursor-pointer group hover:scale-[1.05] hover:border-slate-700 relative overflow-hidden ${role.id === 'doctor' && stellarAddress !== AUTHORIZED_DOCTOR && stellarAddress ? 'opacity-70 saturate-50' : ''}`}
           >
             <div className={`absolute top-0 left-0 w-1 h-full bg-${role.color}-500 opacity-0 group-hover:opacity-100 transition-opacity`} />
