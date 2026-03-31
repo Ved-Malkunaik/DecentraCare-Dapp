@@ -61,7 +61,6 @@ export default function DoctorDashboard() {
       const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
       const consultSimRaw = JSON.parse(consultSimStr);
 
-      // Map sim data structure to match on-chain (if needed) and filter
       const relevantSim = consultSimRaw.filter(c => c.doctor === stellarAddress);
 
       const combined = [...(onChain || []), ...relevantSim];
@@ -71,6 +70,17 @@ export default function DoctorDashboard() {
     } finally {
       setLoadingConsultations(false);
     }
+  };
+
+  const removeConsultation = (prescriptionId) => {
+    // Directly update state and storage for frictionless demo
+    const updatedConsults = myConsultations.filter(c => formatId(c.prescription_id) !== formatId(prescriptionId));
+    setMyConsultations(updatedConsults);
+
+    const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
+    let consultSim = JSON.parse(consultSimStr);
+    consultSim = consultSim.filter(c => formatId(c.prescription_id) !== formatId(prescriptionId));
+    localStorage.setItem('decentracare_sim_consults', JSON.stringify(consultSim));
   };
 
   const fetchPendingAppointments = async () => {
@@ -98,9 +108,31 @@ export default function DoctorDashboard() {
   const fetchPatients = async () => {
     try {
       setLoadingPatients(true);
-      const patients = await sorobanService.getAuthorizedPatients(stellarAddress);
-      // Filter out empty or duplicate addresses if needed
-      setAuthorizedPatients([...new Set(patients)].filter(p => p));
+      const onChainAuthorized = await sorobanService.getAuthorizedPatients(stellarAddress);
+
+      // Extract patients from Consultations (Simulated)
+      const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
+      const consultSim = JSON.parse(consultSimStr);
+      const simConsultPatients = consultSim.filter(c => c.doctor === stellarAddress).map(c => c.patient);
+
+      // Extract patients from Pending Appointments (Simulated)
+      const pendingSimStr = localStorage.getItem('decentracare_sim_pending') || '[]';
+      const pendingSim = JSON.parse(pendingSimStr);
+      const simPendingPatients = pendingSim.filter(p => p.doctor === stellarAddress).map(p => p.patient);
+
+      // Combine all sources: On-chain, Simulated Consultations, Simulated Appointments
+      const allPatients = [
+        ...(onChainAuthorized || []),
+        ...simConsultPatients,
+        ...simPendingPatients
+      ];
+      
+      // Filter unique and valid G... addresses (DRY principle)
+      const uniquePatients = [...new Set(allPatients)]
+        .filter(p => p && p.startsWith('G'))
+        .sort();
+
+      setAuthorizedPatients(uniquePatients);
     } catch (e) {
       console.warn("Failed to fetch patients", e);
     } finally {
@@ -124,7 +156,7 @@ export default function DoctorDashboard() {
       if (!isReg) {
         console.log("Doctor not found. Auto-registering...");
         setStatus('registering');
-        await sorobanService.registerUser(stellarAddress, "DecentraCare Doctor", "General Practice", true);
+        await sorobanService.registerUser(stellarAddress, "DecentraCare Doctor", "General Practice", true, true);
         console.log("Registration successful.");
       }
 
@@ -132,32 +164,33 @@ export default function DoctorDashboard() {
       setStatus('pending');
       setSyncStep('preparing');
       const hash = await generateHash(formData);
-      
+
       console.log("Preparing ledger synchronization...");
-      
+
       let txResponse;
       try {
-          // Progress Step: Await User Signature in Freighter
-          setSyncStep('awaiting_signature');
-          
-          txResponse = await sorobanService.createPrescription(
-            formData.patientAddr,
-            stellarAddress,
-            hash
-          );
-          
-          // Progress Step: Confirmed by User, now Indexing to Ledger
-          setSyncStep('indexing');
-          console.log("On-chain record created:", txResponse.hash);
-          
+        // Progress Step: Await User Signature in Freighter
+        setSyncStep('awaiting_signature');
+
+        txResponse = await sorobanService.createPrescription(
+          formData.patientAddr,
+          stellarAddress,
+          hash,
+          true // skipPopup
+        );
+
+        // Progress Step: Confirmed by User, now Indexing to Ledger
+        setSyncStep('indexing');
+        console.log("On-chain record created:", txResponse.hash);
+
       } catch (err) {
-          console.error("Ledger Sync Failed:", err);
-          if (err.message.toLocaleLowerCase().includes("cancelled")) {
-              setStatus('error');
-              setErrorMsg("Transaction cancelled. Ledger sync is mandatory for verification.");
-              return;
-          }
-          throw err;
+        console.error("Ledger Sync Failed:", err);
+        if (err.message.toLocaleLowerCase().includes("cancelled")) {
+          setStatus('error');
+          setErrorMsg("Transaction cancelled. Ledger sync is mandatory for verification.");
+          return;
+        }
+        throw err;
       }
 
       // Progress Step: Confirmed on Testnet
@@ -167,12 +200,12 @@ export default function DoctorDashboard() {
       const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
       const consultSim = JSON.parse(consultSimStr);
       consultSim.push({
-          doctor: stellarAddress,
-          patient: formData.patientAddr,
-          prescription_id: hash,
-          timestamp: Math.floor(Date.now() / 1000),
-          medication: formData.medicines,
-          diagnosis: formData.notes
+        doctor: stellarAddress,
+        patient: formData.patientAddr,
+        prescription_id: hash,
+        timestamp: Math.floor(Date.now() / 1000),
+        medication: formData.medicines,
+        diagnosis: formData.notes
       });
       localStorage.setItem('decentracare_sim_consults', JSON.stringify(consultSim));
 
@@ -229,6 +262,8 @@ export default function DoctorDashboard() {
       setStatus('success');
       setFormData({ patientAddr: '', medicines: '', notes: '' });
       fetchConsultations();
+      fetchPendingAppointments();
+      fetchPatients();
 
     } catch (err) {
       console.error("Submission failed:", err);
@@ -333,7 +368,7 @@ export default function DoctorDashboard() {
             </div>
 
             <div className="pt-6 border-t border-slate-800 flex flex-col items-center gap-4">
-              <Button 
+              <Button
                 className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-lg shadow-lg shadow-blue-500/20 transition-all border-0 flex items-center justify-center gap-3 group disabled:opacity-70"
                 disabled={status === 'pending' || status === 'generating_proof' || !formData.patientAddr}
                 type="submit"
@@ -347,11 +382,11 @@ export default function DoctorDashboard() {
                     {syncStep === 'confirmed' && "Transaction Confirmed!"}
                   </>
                 ) : status === 'generating_proof' ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Generating ZK Proof...</>
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Generating Prescription</>
                 ) : status === 'registering' ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Registering Doctor Profile...</>
                 ) : (
-                  <><ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" /> Sign & Sync to Soroban</>
+                  <><ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" /> Create Prescription</>
                 )}
               </Button>
 
@@ -379,19 +414,13 @@ export default function DoctorDashboard() {
               <div className="w-full space-y-4 text-left">
                 <div className="p-4 bg-slate-950 rounded-xl border border-slate-800">
                   <label className="text-[10px] text-slate-600 font-bold uppercase block mb-1">Prescription Hash (ID)</label>
-                  <div className="flex items-center gap-2 group cursor-pointer" onClick={() => navigator.clipboard.writeText(generatedId)}>
-                    <code className="text-[10px] text-cyan-400 break-all font-mono">{generatedId}</code>
-                    <Share2 className="w-3 h-3 text-slate-700 group-hover:text-cyan-500" />
+                  <div className="flex items-center justify-between gap-4 group cursor-pointer hover:bg-slate-900/50 p-1 rounded-lg transition-colors" onClick={() => { navigator.clipboard.writeText(generatedId); alert("ID Copied!"); }}>
+                    <code className="text-[10px] text-cyan-400 break-all font-mono leading-relaxed">{generatedId}</code>
+                    <div className="shrink-0 p-2 bg-slate-900 border border-slate-800 rounded-lg group-hover:border-cyan-500/50 transition-colors">
+                      <Copy className="w-4 h-4 text-slate-500 group-hover:text-cyan-400" />
+                    </div>
                   </div>
                 </div>
-                <a
-                  href={sorobanService.getExplorerUrl(txHash)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-3 border border-slate-800 rounded-xl text-xs text-slate-400 hover:bg-slate-800 transition-colors"
-                >
-                  View on Stellar Expert <History className="w-3 h-3" />
-                </a>
                 <Button variant="secondary" onClick={() => setStatus('idle')} className="w-full py-3 h-12">Create Another</Button>
               </div>
             </Card>
@@ -504,7 +533,16 @@ export default function DoctorDashboard() {
                     <div key={idx} className="p-4 rounded-xl border border-slate-800 bg-slate-950/50 transition-all">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] font-bold text-slate-500 uppercase">Consultation Proof</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400" />
+                          <button
+                            onClick={() => removeConsultation(consult.prescription_id)}
+                            className="p-1 hover:bg-rose-500/10 rounded-lg text-slate-600 hover:text-rose-500 transition-colors"
+                            title="Remove from list"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                       <div className="text-xs text-slate-400 break-all mb-1">
                         Patient: <span className="font-mono text-cyan-400">{consult.patient}</span>

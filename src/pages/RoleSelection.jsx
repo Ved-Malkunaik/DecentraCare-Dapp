@@ -35,22 +35,6 @@ export default function RoleSelection() {
       icon: <User className="w-8 h-8 text-emerald-400" />,
       path: '/patient',
       color: 'emerald'
-    },
-    {
-      id: 'pharmacist',
-      title: 'Sign in as a Pharmacist',
-      description: 'Scan QR codes and verify prescriptions on the Stellar blockchain.',
-      icon: <ClipboardCheck className="w-8 h-8 text-purple-400" />,
-      path: '/pharmacy',
-      color: 'purple'
-    },
-    {
-      id: 'insurer',
-      title: 'Sign in as a Insurer',
-      description: 'Audit consultation proofs securely via Zero-Knowledge Verification.',
-      icon: <ShieldCheck className="w-8 h-8 text-rose-400" />,
-      path: '/insurance',
-      color: 'rose'
     }
   ];
 
@@ -81,7 +65,7 @@ export default function RoleSelection() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         {roles.map((role) => (
           <Card 
             key={role.id}

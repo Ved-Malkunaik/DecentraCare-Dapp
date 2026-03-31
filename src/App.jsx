@@ -3,13 +3,11 @@ import Navbar from './components/Navbar';
 import Button from './components/Button';
 import { ShieldCheck } from 'lucide-react';
 import Home from './pages/Home';
-import RegisterRole from './pages/RegisterRole';
 import DoctorDashboard from './pages/DoctorDashboard';
 import PatientDashboard from './pages/PatientDashboard';
-import PharmacyDashboard from './pages/PharmacyDashboard';
-import InsuranceDashboard from './pages/InsuranceDashboard';
+
 import { WalletProvider, useWallet } from './context/WalletContext';
-import { RoleProvider, useRole } from './context/RoleContext';
+import { RoleProvider } from './context/RoleContext';
 import RoleSelection from './pages/RoleSelection';
 
 const AUTHORIZED_DOCTOR = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
@@ -50,14 +48,12 @@ function App() {
           <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30">
             <Navbar />
             <main className="container mx-auto px-4 py-8">
-               <Routes>
-                 <Route path="/" element={<Home />} />
-                 <Route path="/select-role" element={<RoleSelection />} />
-                 <Route path="/doctor" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
-                 <Route path="/patient" element={<ProtectedRoute allowedRole="patient"><PatientDashboard /></ProtectedRoute>} />
-                 <Route path="/pharmacy" element={<ProtectedRoute allowedRole="pharmacist"><PharmacyDashboard /></ProtectedRoute>} />
-                 <Route path="/insurance" element={<ProtectedRoute allowedRole="insurer"><InsuranceDashboard /></ProtectedRoute>} />
-               </Routes>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/select-role" element={<RoleSelection />} />
+                  <Route path="/doctor" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
+                  <Route path="/patient" element={<ProtectedRoute allowedRole="patient"><PatientDashboard /></ProtectedRoute>} />
+                </Routes>
             </main>
           
           <footer className="py-8 text-center text-slate-600 text-xs border-t border-slate-900 mt-20">

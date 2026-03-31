@@ -19,8 +19,6 @@ export default function Navbar() {
     { name: 'Home', path: '/' },
     { name: 'Doctor', path: '/doctor' },
     { name: 'Patient', path: '/patient' },
-    { name: 'Pharmacy', path: '/pharmacy' },
-    { name: 'Insurance', path: '/insurance' },
   ];
 
   const shortenAddress = (addr) => addr ? `${addr.slice(0, 5)}...${addr.slice(-4)}` : '';

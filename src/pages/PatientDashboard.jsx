@@ -29,6 +29,10 @@ import {
 import { useWallet } from '../context/WalletContext';
 import { sorobanService } from '../services/sorobanService';
 
+const FIXED_DOCTOR_ADDRESS = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
+const FIXED_DOCTOR_NAME = 'Dr. Vijay Bharne';
+const FIXED_DOCTOR_QUAL = 'MBBS,MD';
+
 export default function PatientDashboard() {
   const { stellarAddress } = useWallet();
   const [searchId, setSearchId] = useState('');
@@ -37,12 +41,14 @@ export default function PatientDashboard() {
   const [doctorToManage, setDoctorToManage] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [appointmentData, setAppointmentData] = useState({
-    doctorAddr: '',
-    date: '',
+    doctorAddr: FIXED_DOCTOR_ADDRESS,
+    date: new Date().toISOString().split('T')[0],
     reason: ''
   });
   const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [activeQr, setActiveQr] = useState(null); // { id: string, date: string }
+  const [bookingTxHash, setBookingTxHash] = useState('');
+  const [activeQr, setActiveQr] = useState(null);
+  const [verifiedData, setVerifiedData] = useState(null);
 
   // 1. Initial Access Check
   useEffect(() => {
@@ -87,17 +93,17 @@ export default function PatientDashboard() {
     try {
       setLoadingConsultations(true);
       const onChain = await sorobanService.getConsultationsByPatient(stellarAddress);
-      
+
       // Merge with Simulations
       const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
       const consultSimRaw = JSON.parse(consultSimStr);
-      
+
       // Filter for current patient
       const relevantSim = consultSimRaw.filter(c => c.patient === stellarAddress).map(c => ({
-          ...c,
-          prescription_id: c.prescription_id // In sim it's string, in on-chain it's Uint8Array
+        ...c,
+        prescription_id: c.prescription_id // In sim it's string, in on-chain it's Uint8Array
       }));
-      
+
       const combined = [...(onChain || []), ...relevantSim];
       setMyConsultations(combined);
     } catch (e) {
@@ -158,14 +164,14 @@ export default function PatientDashboard() {
     if (!id) return '';
     if (typeof id === 'string') return id;
     try {
-        return Buffer.from(id).toString('hex');
+      return Buffer.from(id).toString('hex');
     } catch (e) {
-        return id.toString();
+      return id.toString();
     }
   };
 
   const copyToClipboard = (text) => {
-      navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text);
   };
 
   const handleBookAppointment = async (e) => {
@@ -177,32 +183,28 @@ export default function PatientDashboard() {
       setErrorMsg('');
       setBookingSuccess(false);
 
-      console.log("Simulating booking (off-chain for demo UI)...");
-      
-      // Store pending appointment in localStorage for simulation
+      // 1. On-Chain Transaction (Triggers Freighter Popup)
+      const txResult = await sorobanService.bookAppointment(stellarAddress, appointmentData.doctorAddr);
+      setBookingTxHash(txResult.hash);
+
+      // 2. Local Simulation Sync (for doctor dashboard visibility)
       const pendingSimStr = localStorage.getItem('decentracare_sim_pending') || '[]';
       const pendingSim = JSON.parse(pendingSimStr);
-      
       pendingSim.push({
-          doctor: appointmentData.doctorAddr,
-          patient: stellarAddress,
-          date: appointmentData.date,
-          reason: appointmentData.reason,
-          timestamp: Date.now()
+        doctor: appointmentData.doctorAddr,
+        patient: stellarAddress,
+        date: appointmentData.date,
+        reason: appointmentData.reason,
+        timestamp: Date.now()
       });
-      
       localStorage.setItem('decentracare_sim_pending', JSON.stringify(pendingSim));
-
-      // Visual delay for feel
-      await new Promise(r => setTimeout(r, 1000));
 
       setBookingSuccess(true);
       setIsAccessGranted(true);
       setDoctorToManage(appointmentData.doctorAddr);
       setStatus('idle');
 
-      // Clear form after delay
-      setTimeout(() => setBookingSuccess(false), 5000);
+      // Keep success message visible and let user see the explorer link
     } catch (error) {
       console.error('Booking failed', error);
       setErrorMsg(error.message || 'Failed to book appointment.');
@@ -210,15 +212,46 @@ export default function PatientDashboard() {
     }
   };
 
+  // Support real-time updates across tabs for demo
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'decentracare_sim_consults' || e.key === 'decentracare_sim_pending') {
+        fetchConsultations();
+        fetchHistory();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!searchId) return;
 
     try {
       setStatus('searching');
-      const isValid = await sorobanService.verifyPrescription(searchId);
-      setStatus(isValid ? 'found' : 'error');
+      setVerifiedData(null);
+
+      // 1. Check On-Chain First
+      let isValid = await sorobanService.verifyPrescription(searchId);
+
+      // 2. Check Simulation Store (Demo Fallback for skipped popups)
+      const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
+      const consultSim = JSON.parse(consultSimStr);
+      const simFound = consultSim.find(c => c.prescription_id === searchId);
+
+      if (isValid || simFound) {
+        if (simFound) {
+          setVerifiedData(simFound);
+        } else {
+          setVerifiedData({ medication: "Standard Consultation", diagnosis: "Recovered from Ledger" });
+        }
+        setStatus('found');
+      } else {
+        setStatus('error');
+      }
     } catch (err) {
+      console.error("Search failed", err);
       setStatus('error');
     }
   };
@@ -241,16 +274,12 @@ export default function PatientDashboard() {
           <form onSubmit={handleBookAppointment} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
-                <User className="w-3 h-3" /> Doctor Wallet Address
+                <Stethoscope className="w-3 h-3 text-blue-500" /> Selected Specialist
               </label>
-              <input
-                type="text"
-                value={appointmentData.doctorAddr}
-                onChange={(e) => setAppointmentData({ ...appointmentData, doctorAddr: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm font-mono text-blue-400 outline-none focus:ring-1 focus:ring-blue-500/30"
-                placeholder="G..."
-                required
-              />
+              <div className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col gap-0.5 border-l-2 border-l-blue-500">
+                <p className="text-sm font-bold text-slate-100">{FIXED_DOCTOR_NAME}</p>
+                <p className="text-[10px] text-blue-400 font-medium">{FIXED_DOCTOR_QUAL}</p>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
@@ -289,9 +318,21 @@ export default function PatientDashboard() {
             </div>
           </form>
           {bookingSuccess && (
-            <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-400 animate-in slide-in-from-top-2">
-              <CheckCircle2 className="w-5 h-5" />
-              <p className="text-sm font-medium">Appointment booked & Doctor granted access successfully!</p>
+            <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 text-emerald-400 animate-in slide-in-from-top-2">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5" />
+                <p className="text-sm font-medium">Appointment booked & Access granted on-chain!</p>
+              </div>
+              {bookingTxHash && (
+                <a
+                  href={sorobanService.getExplorerUrl(bookingTxHash)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all border border-emerald-500/30"
+                >
+                  View on Stellar Expert <History className="w-3 h-3" />
+                </a>
+              )}
             </div>
           )}
           {status === 'error' && errorMsg && (
@@ -310,8 +351,8 @@ export default function PatientDashboard() {
             <ClipboardList className="w-6 h-6 text-purple-500" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-100">My Prescriptions</h2>
-            <p className="text-sm text-slate-400 font-medium">Verify and view your medical records from the blockchain.</p>
+            <h2 className="text-2xl font-bold text-slate-100">Manage Pharmacy</h2>
+            <p className="text-sm text-slate-400 font-medium">Verify and view your medical records from the blockchain for pharmacists.</p>
           </div>
         </div>
 
@@ -351,9 +392,15 @@ export default function PatientDashboard() {
                     <h4 className="text-xl font-bold text-slate-100">Verified Medical Record</h4>
                     <p className="text-[10px] text-slate-500 font-mono break-all line-clamp-1">{searchId}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-xl border border-white/5">
-                    <div><p className="text-[9px] text-slate-600 font-bold uppercase">Medication</p><p className="text-xs text-slate-100 font-medium italic">Amoxicillin (Z-Pack)</p></div>
-                    <div><p className="text-[9px] text-slate-600 font-bold uppercase">Status</p><p className="text-[10px] text-emerald-400 font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> FULFILLED</p></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-xl border border-white/5">
+                    <div>
+                      <p className="text-[9px] text-slate-600 font-bold uppercase">Medication</p>
+                      <p className="text-xs text-slate-100 font-medium italic">{verifiedData?.medication || "Consultation Completed"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-slate-600 font-bold uppercase">Diagnosis / Instructions</p>
+                      <p className="text-xs text-slate-100 font-medium italic">{verifiedData?.diagnosis || "Record exists on blockchain"}</p>
+                    </div>
                   </div>
                 </div>
               </Card>
