@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { sorobanService } from '../services/sorobanService';
+import { dbService } from '../services/supabaseService';
 
 const FIXED_DOCTOR_ADDRESS = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
 const FIXED_DOCTOR_NAME = 'Dr. Vijay Bharne';
@@ -98,13 +99,16 @@ export default function PatientDashboard() {
       const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
       const consultSimRaw = JSON.parse(consultSimStr);
 
+      // Fetch from Database (Supabase)
+      const dbConsults = await dbService.getConsultationsByPatient(stellarAddress);
+
       // Filter for current patient
       const relevantSim = consultSimRaw.filter(c => c.patient === stellarAddress).map(c => ({
         ...c,
         prescription_id: c.prescription_id // In sim it's string, in on-chain it's Uint8Array
       }));
 
-      const combined = [...(onChain || []), ...relevantSim];
+      const combined = [...(onChain || []), ...dbConsults, ...relevantSim];
       setMyConsultations(combined);
     } catch (e) {
       console.warn("Consult fetch failed", e);
@@ -187,7 +191,18 @@ export default function PatientDashboard() {
       const txResult = await sorobanService.bookAppointment(stellarAddress, appointmentData.doctorAddr);
       setBookingTxHash(txResult.hash);
 
-      // 2. Local Simulation Sync (for doctor dashboard visibility)
+      // 2. Mirror to Database (Supabase) for cross-user sync
+      await dbService.insertAppointment({
+          patient_wallet: stellarAddress,
+          doctor_wallet: appointmentData.doctorAddr,
+          date: appointmentData.date,
+          reason: appointmentData.reason,
+          tx_hash: txResult.hash,
+          is_simulated: false
+      });
+      await dbService.grantAccess(stellarAddress, appointmentData.doctorAddr);
+
+      // 3. Local Simulation Sync (fallback for offline/demo)
       const pendingSimStr = localStorage.getItem('decentracare_sim_pending') || '[]';
       const pendingSim = JSON.parse(pendingSimStr);
       pendingSim.push({
@@ -519,3 +534,4 @@ export default function PatientDashboard() {
     </div>
   );
 }
+
