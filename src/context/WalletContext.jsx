@@ -16,9 +16,9 @@ export function WalletProvider({ children }) {
   const checkWallet = async () => {
     try {
       if (await checkWalletConnection()) {
-        const address = await getWalletAddress();
-        if (address && typeof address === 'string') {
-          setWalletAddress(address);
+        const addr = await getWalletAddress();
+        if (addr && typeof addr === 'string') {
+          setWalletAddress(addr);
           setIsConnected(true);
         }
       }
@@ -31,15 +31,15 @@ export function WalletProvider({ children }) {
     try {
       setLoading(true);
       await setAllowed();
-      const address = await getWalletAddress();
-      if (address && typeof address === 'string') {
-        setWalletAddress(address);
+      const addr = await getWalletAddress();
+      if (addr && typeof addr === 'string') {
+        setWalletAddress(addr);
         setIsConnected(true);
       }
-      return address;
+      return addr;
     } catch (error) {
       console.error('Freighter connection failed', error);
-      alert('Failed to connect Freighter wallet.');
+      alert('Failed to connect Freighter wallet. Please ensure the extension is installed.');
     } finally {
       setLoading(false);
     }
@@ -53,7 +53,7 @@ export function WalletProvider({ children }) {
   return (
     <WalletContext.Provider value={{
       stellarAddress: walletAddress,
-      walletAddress,
+      walletAddress: walletAddress,
       isConnected,
       loading,
       connectWallet,

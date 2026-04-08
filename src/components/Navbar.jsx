@@ -19,6 +19,7 @@ export default function Navbar() {
     { name: 'Home', path: '/' },
     { name: 'Doctor', path: '/doctor' },
     { name: 'Patient', path: '/patient' },
+    { name: 'Assistant', path: '/assistant' },
   ];
 
   const shortenAddress = (addr) => addr ? `${addr.slice(0, 5)}...${addr.slice(-4)}` : '';
@@ -63,7 +64,7 @@ export default function Navbar() {
 
           {!stellarAddress ? (
             <Button onClick={connectWallet} variant="primary" className="rounded-full px-6 h-11 text-xs sm:text-sm font-bold tracking-wide">
-              Connect Freighter
+              Connect Wallet
             </Button>
           ) : (
             <div className="flex items-center gap-2">

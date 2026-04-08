@@ -8,8 +8,9 @@ This project demonstrates how traditional healthcare booking can be transformed 
 ## 🌟 Key Features
 
 - **Role-Based Web3 Authentication:** Secure onboarding process creating separate on-chain identities for 'Doctors' and 'Patients' using Freighter Wallet.
-- **On-chain Consultation Proof:** Every medical visit generates a digitally signed `Consultation Record` mapped sequentially to both the Doctor and Patient.
+- **On-chain Consultation Record:** Every medical visit generates a digitally signed `Consultation Record` mapped sequentially to both the Doctor and Patient.
 - **Immutable Prescriptions:** Medical records are cryptographically hashed via SHA-256 and securely stored. Pharmacies and Insurance companies can rapidly verify the integrity of the record in O(1) time.
+- **Dynamic Access Control:** Patients grant, view, and revoke temporary access permissions to individual Doctors dynamically.
 - **Stellar Soroban Smart Contracts:** Fully leverages the speed, affordability, and rust-based safety of Soroban.
 - **🤖 AI Assistant (Local LLM)**
 Powered by Ollama
@@ -42,6 +43,24 @@ Patients can book appointments from anywhere:
  or
 
  simply click on deployed dapp link (deployed via vercel)
+  
+ or
+
+### 4. Start Telegram Bot
+1. Open **Telegram**
+2. Search for **@BotFather**
+3. Create a new bot named `DecentraCare_Bot`
+4. Copy the **BOT TOKEN** and paste it into `backend/telegram.js`.
+5. Run the backend:
+```bash
+cd backend
+npm install
+node server.js
+```
+6. Search for your bot in Telegram: **@DecentraCare_Bot**
+7. Send **"Hi"** to start your booking!
+
+## 🧪 Testing
 
  or 
 

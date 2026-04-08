@@ -224,15 +224,32 @@ impl HealthcareDapp {
         // Open-Access: Allow booking even if profiles aren't fully registered yet.
         // This ensures the Freighter popup triggers instantly during the demo flow.
         
-        // 🚀 AUTO-INIT: Ensure doctor is initialized to prevent simulation failure
-        let is_doc = env.storage().persistent().has(&DataKey::Doctor(doctor.clone()));
+        // 🚀 AUTO-INIT: Ensure doctor and patient are initialized to prevent simulation failure
+        let is_doc = env.storage().persistent().has(&DataKey::Doctors(doctor.clone()));
         if !is_doc {
-            let doc_profile = Doctor {
-                address: doctor.clone(),
+            let doc_profile = DoctorProfile {
                 name: String::from_str(&env, "DecentraCare Physician"),
                 specialization: String::from_str(&env, "General Medicine"),
             };
-            env.storage().persistent().set(&DataKey::Doctor(doctor.clone()), &doc_profile);
+            env.storage().persistent().set(&DataKey::Doctors(doctor.clone()), &doc_profile);
+            
+            // Also tag role for role checks
+            let mut roles: soroban_sdk::Map<Address, Role> = env.storage().persistent().get(&symbol_short!("ROLE")).unwrap_or(soroban_sdk::Map::new(&env));
+            roles.set(doctor.clone(), Role::Doctor);
+            env.storage().persistent().set(&symbol_short!("ROLE"), &roles);
+        }
+
+        let is_pat = env.storage().persistent().has(&DataKey::Patients(patient.clone()));
+        if !is_pat {
+            let pat_profile = PatientProfile {
+                name: String::from_str(&env, "New Patient"),
+                age: 25,
+            };
+            env.storage().persistent().set(&DataKey::Patients(patient.clone()), &pat_profile);
+
+            let mut roles: soroban_sdk::Map<Address, Role> = env.storage().persistent().get(&symbol_short!("ROLE")).unwrap_or(soroban_sdk::Map::new(&env));
+            roles.set(patient.clone(), Role::Patient);
+            env.storage().persistent().set(&symbol_short!("ROLE"), &roles);
         }
 
         // Add to pending appointments for doctor

@@ -5,10 +5,12 @@ import { ShieldCheck } from 'lucide-react';
 import Home from './pages/Home';
 import DoctorDashboard from './pages/DoctorDashboard';
 import PatientDashboard from './pages/PatientDashboard';
+import AIAssistant from './pages/AIAssistant';
 
 import { WalletProvider, useWallet } from './context/WalletContext';
 import { RoleProvider } from './context/RoleContext';
 import RoleSelection from './pages/RoleSelection';
+import ConfirmBooking from './pages/ConfirmBooking';
 
 const AUTHORIZED_DOCTOR = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
 
@@ -53,6 +55,8 @@ function App() {
                   <Route path="/select-role" element={<RoleSelection />} />
                   <Route path="/doctor" element={<ProtectedRoute allowedRole="doctor"><DoctorDashboard /></ProtectedRoute>} />
                   <Route path="/patient" element={<ProtectedRoute allowedRole="patient"><PatientDashboard /></ProtectedRoute>} />
+                  <Route path="/assistant" element={<AIAssistant />} />
+                  <Route path="/confirm-booking" element={<ConfirmBooking />} />
                 </Routes>
             </main>
           

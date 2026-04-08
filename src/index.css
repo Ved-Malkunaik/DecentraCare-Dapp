@@ -4,27 +4,47 @@
   color-scheme: dark;
 }
 
-body {
+html, body {
   margin: 0;
+  padding: 0;
   min-height: 100vh;
   background-color: #020617; /* slate-950 */
   color: #f8fafc; /* slate-50 */
   font-family: ui-sans-serif, system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
-/* Fallback styles in case tailwind fails */
-a {
-  text-decoration: none;
-  color: inherit;
+/* Custom Scrollbar Global */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-button {
-  cursor: pointer;
-  border: none;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.25);
 }
 
 .glass {
   background: rgba(15, 23, 42, 0.5);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(30, 41, 59, 1);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }

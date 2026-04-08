@@ -137,3 +137,28 @@ fn test_appointment_and_consultation_flow() {
     let authorized_after = client.get_authorized_patients(&doctor);
     assert_eq!(authorized_after.len(), 0);
 }
+
+#[test]
+fn test_frictionless_onboarding_via_booking() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let contract_id = env.register(HealthcareDapp, ());
+    let client = HealthcareDappClient::new(&env, &contract_id);
+
+    let stranger_patient = Address::generate(&env);
+    let stranger_doctor = Address::generate(&env);
+
+    // ACTION: Book without manual registration first
+    client.book_appointment(&stranger_patient, &stranger_doctor);
+
+    // VERIFICATION: Role and access should be auto-initialized
+    assert_eq!(client.get_role(&stranger_patient), symbol_short!("patient"));
+    assert_eq!(client.get_role(&stranger_doctor), symbol_short!("doctor"));
+    assert_eq!(client.check_access(&stranger_patient, &stranger_doctor), true);
+    
+    // Check pending list
+    let pending = client.get_pending_appointments(&stranger_doctor);
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending.get(0).unwrap(), stranger_patient);
+}

@@ -224,7 +224,7 @@ export const sorobanService = {
       if (error.message?.includes('already registered') || errStr.includes('exists')) {
         return { status: 'SUCCESS' };
       }
-      if (error.hash) throw error; 
+      if (error.hash) throw error;
       throw new Error(errStr);
     }
   },
@@ -332,8 +332,8 @@ export const sorobanService = {
    */
   createPrescription: async (patientAddr, doctorAddr, recordHash, skipPopup = false) => {
     if (skipPopup) {
-        console.log("DEMO MODE: Skipping prescription popup.");
-        return { status: "SUCCESS", hash: "SIM_PRESCRIPTION_" + recordHash.substring(0, 8) };
+      console.log("DEMO MODE: Skipping prescription popup.");
+      return { status: "SUCCESS", hash: "SIM_PRESCRIPTION_" + recordHash.substring(0, 8) };
     }
 
     let account;
@@ -452,7 +452,7 @@ export const sorobanService = {
 
     let signedXdr = signedTxResponse.signedTxXdr || signedTxResponse.signedTx || signedTxResponse;
     const sendResponse = await server.sendTransaction(StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE));
-    
+
     const finalResponse = await waitForTransaction(sendResponse.hash);
     if (finalResponse.status === "SUCCESS") {
       return { status: "SUCCESS", hash: sendResponse.hash };

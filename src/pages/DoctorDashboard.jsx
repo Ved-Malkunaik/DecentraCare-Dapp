@@ -22,7 +22,6 @@ import {
 import { useWallet } from '../context/WalletContext';
 import { sorobanService } from '../services/sorobanService';
 import { dbService } from '../services/supabaseService';
-import * as snarkjs from 'snarkjs';
 
 export default function DoctorDashboard() {
   const { stellarAddress, role } = useWallet();
@@ -238,30 +237,7 @@ export default function DoctorDashboard() {
       setGeneratedId(hash);
       setTxHash(txResponse.hash);
 
-      // Step D: Generate ZKP Proof
-      setStatus('generating_proof');
-      console.log("Generating Zero-Knowledge Proof...");
-      try {
-        const inputs = {
-          doctor_wallet: addressToBigInt(stellarAddress),
-          patient_wallet: addressToBigInt(formData.patientAddr),
-          prescription_id: addressToBigInt(hash)
-        };
-
-        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-          inputs,
-          "/consultationProof.wasm",
-          "/consultation_final.zkey"
-        );
-
-        // Store proof locally for sharing demo
-        localStorage.setItem(`proof_${hash}`, JSON.stringify({ proof, publicSignals }));
-        console.log("ZKP Proof generated and stored locally.");
-      } catch (zkpErr) {
-        console.warn("ZKP Generation failed (not blocking)", zkpErr);
-      }
-
-      // Step E: Complete Appointment if applicable (Always check pending list)
+      // Step D: Complete Appointment if applicable (Always check pending list)
       const isInPendingList = pendingAppointments.includes(formData.patientAddr);
       if (isInPendingList || isFromPending) {
         try {
@@ -313,15 +289,6 @@ export default function DoctorDashboard() {
     const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  };
-
-  const addressToBigInt = (str) => {
-    if (!str) return '0';
-    let num = 0n;
-    for (let i = 0; i < str.length; i++) {
-      num = num * 256n + BigInt(str.charCodeAt(i));
-    }
-    return num.toString();
   };
 
   const formatId = (id) => {
@@ -410,8 +377,6 @@ export default function DoctorDashboard() {
                     {syncStep === 'indexing' && "Indexing to Stellar Testnet..."}
                     {syncStep === 'confirmed' && "Transaction Confirmed!"}
                   </>
-                ) : status === 'generating_proof' ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Generating Prescription</>
                 ) : status === 'registering' ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Registering Doctor Profile...</>
                 ) : (

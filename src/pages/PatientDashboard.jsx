@@ -24,7 +24,8 @@ import {
   Clock,
   MapPin,
   LogOut,
-  Copy
+  Copy,
+  X
 } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
 import { sorobanService } from '../services/sorobanService';
@@ -44,6 +45,7 @@ export default function PatientDashboard() {
   const [appointmentData, setAppointmentData] = useState({
     doctorAddr: FIXED_DOCTOR_ADDRESS,
     date: new Date().toISOString().split('T')[0],
+    slot: '10:00 AM',
     reason: ''
   });
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -193,12 +195,12 @@ export default function PatientDashboard() {
 
       // 2. Mirror to Database (Supabase) for cross-user sync
       await dbService.insertAppointment({
-          patient_wallet: stellarAddress,
-          doctor_wallet: appointmentData.doctorAddr,
-          date: appointmentData.date,
-          reason: appointmentData.reason,
-          tx_hash: txResult.hash,
-          is_simulated: false
+        patient_wallet: stellarAddress,
+        doctor_wallet: appointmentData.doctorAddr,
+        date: appointmentData.date,
+        reason: appointmentData.reason,
+        tx_hash: txResult.hash,
+        is_simulated: false
       });
       await dbService.grantAccess(stellarAddress, appointmentData.doctorAddr);
 
@@ -271,8 +273,27 @@ export default function PatientDashboard() {
     }
   };
 
+  const handleDeleteHistory = async (prescription_id) => {
+    if (!window.confirm("Remove this entry from your history?")) return;
+    try {
+      const pid = formatId(prescription_id);
+      await dbService.deleteConsultation(pid);
+      // Update local state
+      setMyConsultations(prev => prev.filter(c => formatId(c.prescription_id) !== pid));
+    } catch (err) {
+      console.error("Failed to delete history", err);
+    }
+  };
+
+  const getDoctorDisplayName = (addr) => {
+    if (!addr) return 'Unknown Doctor';
+    const cleanAddr = typeof addr === 'string' ? addr : formatId(addr);
+    if (cleanAddr === FIXED_DOCTOR_ADDRESS) return FIXED_DOCTOR_NAME;
+    return `${cleanAddr.substring(0, 8)}...${cleanAddr.substring(cleanAddr.length - 4)}`;
+  };
+
   return (
-    <div className="max-w-6xl mx-auto w-full flex flex-col gap-12 py-8">
+    <div className="max-w-6xl mx-auto w-full flex flex-col gap-12 pt-28 pb-12 px-4 shadow-sm">
       {/* 📅 SECTION 1: BOOK APPOINTMENT */}
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -286,7 +307,7 @@ export default function PatientDashboard() {
         </div>
 
         <Card className="border-blue-500/20 bg-blue-500/5">
-          <form onSubmit={handleBookAppointment} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+          <form onSubmit={handleBookAppointment} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
                 <Stethoscope className="w-3 h-3 text-blue-500" /> Selected Specialist
@@ -298,7 +319,7 @@ export default function PatientDashboard() {
             </div>
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
-                <Calendar className="w-3 h-3" /> Preferred Date
+                <Calendar className="w-3 h-3 text-blue-400" /> Preferred Date
               </label>
               <input
                 type="date"
@@ -310,7 +331,22 @@ export default function PatientDashboard() {
             </div>
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
-                <MessageSquare className="w-3 h-3" /> Reason for Visit
+                <Clock className="w-3 h-3 text-cyan-400" /> Time Slot
+              </label>
+              <select
+                value={appointmentData.slot}
+                onChange={(e) => setAppointmentData({ ...appointmentData, slot: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-300 outline-none focus:ring-1 focus:ring-blue-500/30 appearance-none"
+                required
+              >
+                {['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM'].map(slot => (
+                  <option key={slot} value={slot}>{slot}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
+                <MessageSquare className="w-3 h-3 text-indigo-400" /> Reason for Visit
               </label>
               <input
                 type="text"
@@ -321,7 +357,7 @@ export default function PatientDashboard() {
                 required
               />
             </div>
-            <div className="md:col-span-3">
+            <div className="md:col-span-4">
               <Button
                 type="submit"
                 disabled={status === 'booking' || status === 'registering'}
@@ -454,7 +490,14 @@ export default function PatientDashboard() {
           ) : myConsultations.length > 0 ? (
             <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar items-start">
               {[...myConsultations].reverse().map((consult, idx) => (
-                <div key={idx} className="min-w-[320px] max-w-[320px] p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 shrink-0 group hover:border-indigo-500/40 transition-colors">
+                <div key={idx} className="min-w-[320px] max-w-[320px] p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 shrink-0 group hover:border-indigo-500/40 transition-colors relative">
+                  <button
+                    onClick={() => handleDeleteHistory(consult.prescription_id)}
+                    className="absolute -top-2 -right-2 p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-full border border-rose-500/20 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    title="Remove from history"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2 text-indigo-400">
                       <CheckCircle2 className="w-4 h-4" />
@@ -473,7 +516,7 @@ export default function PatientDashboard() {
                       <p className="text-[9px] uppercase font-bold text-slate-600 mb-0.5">Attending Doctor</p>
                       <div className="flex items-center gap-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
                         <Stethoscope className="w-3 h-3 text-slate-500" />
-                        <p className="text-xs font-mono text-cyan-400 truncate">{consult.doctor}</p>
+                        <p className="text-xs font-bold text-cyan-400 truncate">{getDoctorDisplayName(consult.doctor || consult.doctor_wallet)}</p>
                       </div>
                     </div>
                     <div>
