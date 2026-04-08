@@ -1,6 +1,8 @@
 # DecentraCare - Web3 Healthcare DApp
 
-DecentraCare is a state-of-the-art decentralized application (DApp) built on the Stellar Soroban blockchain. It redefines healthcare data management by enabling physicians to create immutable, verifiable prescriptions and giving patients complete sovereign control over who can access their clinical data.
+DecentraCare is a multi-platform AI + Web3 healthcare booking system that allows patients to book doctor appointments through a DApp, Telegram— with final confirmations stored on-chain using wallet signature.
+
+This project demonstrates how traditional healthcare booking can be transformed into a trustless, decentralized and AI-assisted experience.
 
 
 ## 🌟 Key Features
@@ -9,7 +11,21 @@ DecentraCare is a state-of-the-art decentralized application (DApp) built on the
 - **On-chain Consultation Proof:** Every medical visit generates a digitally signed `Consultation Record` mapped sequentially to both the Doctor and Patient.
 - **Immutable Prescriptions:** Medical records are cryptographically hashed via SHA-256 and securely stored. Pharmacies and Insurance companies can rapidly verify the integrity of the record in O(1) time.
 - **Stellar Soroban Smart Contracts:** Fully leverages the speed, affordability, and rust-based safety of Soroban.
-  
+- **🤖 AI Assistant (Local LLM)**
+Powered by Ollama
+Users can chat with an AI assistant inside the DApp to:
+Book appointments using natural language
+View prescriptions
+Navigate the platform easily
+-💬 Multi-Platform Booking Bots
+
+Patients can book appointments from anywhere:
+| Platform     | Capability         |
+| ------------ | ------------------ |
+| DApp Chat    | AI powered booking |
+| Telegram Bot | Chat based booking |
+
+
 
 ## 🚀 How to Set up and Run Locally
 
@@ -27,6 +43,10 @@ DecentraCare is a state-of-the-art decentralized application (DApp) built on the
 
  simply click on deployed dapp link (deployed via vercel)
 
+ or 
+
+ simply go open telegram ----> search for 'DecentraCare_Bot' ----> chat with bot & book appointment. (fastest way)
+
  
 ## 📱 Screenshots with working Steps
 
@@ -37,6 +57,12 @@ DecentraCare is a state-of-the-art decentralized application (DApp) built on the
 <img width="1919" height="913" alt="image" src="https://github.com/user-attachments/assets/d61a4a7d-0939-4164-ba46-da753705e0f5" />
 
 <img width="1917" height="910" alt="image" src="https://github.com/user-attachments/assets/c7e8ce35-4a41-4934-ac48-0230a66daf5a" />
+
+<img width="1919" height="904" alt="image" src="https://github.com/user-attachments/assets/bba42693-fccb-41cc-9b61-a165e1d41df0" />
+
+<img width="1394" height="906" alt="image" src="https://github.com/user-attachments/assets/aef8944f-b6da-44d6-b452-5e2942014ae9" />
+
+
 
 
 ## Contract Details :
@@ -65,7 +91,16 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fini
 
 ## Working Demo link :
 
+Manually booking appointment from dapp :
 https://drive.google.com/file/d/1ZKZPRopfS3h2i_dPZLBcbdU0x3_klYDB/view?usp=sharing
+
+Booking Appointment through AI Assistant (just by prompt) :
+https://drive.google.com/file/d/1uY_7gC3RM7Hin36eUcAD6_M9x44e0iL6/view?usp=sharing
+
+Booking appointment from Telegram bot (just by chat) :
+https://drive.google.com/file/d/1YdKO8kVbm-cLecUmv-G_tnFHhyAF89Yb/view?usp=sharing
+
+
 
 ##  Users Feedbacks :
 
