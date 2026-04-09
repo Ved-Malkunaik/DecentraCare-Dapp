@@ -1,6 +1,12 @@
 import express from "express";
 import cors from "cors";
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 import ollama from "ollama";
 import { bot } from "./telegram.js";
 import { getBooking, markBookingConfirmed } from "./services/bookingStore.js";
@@ -125,5 +131,6 @@ app.listen(PORT, async () => {
     console.log("👉 Please start Ollama (Tray app or 'ollama serve') before using the AI Assistant.");
   }
 });
+
 
 
