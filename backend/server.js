@@ -56,20 +56,20 @@ app.post("/chat", async (req, res) => {
 });
 
 // Booking Store Routes
-app.get("/booking/:id", (req, res) => {
-  const booking = getBooking(req.params.id);
+app.get("/booking/:id", async (req, res) => {
+  const booking = await getBooking(req.params.id);
   if (!booking) return res.status(404).json({ error: "Booking not found" });
   res.json(booking);
 });
 
-app.post("/confirm/:id", (req, res) => {
+app.post("/confirm/:id", async (req, res) => {
   const { wallet, txHash } = req.body;
-  markBookingConfirmed(req.params.id, wallet, txHash);
+  await markBookingConfirmed(req.params.id, wallet, txHash);
 
-  const booking = getBooking(req.params.id);
-  if (booking && booking.chatId) {
+  const booking = await getBooking(req.params.id);
+  if (booking && booking.chat_id) {
     const explorerLink = `https://stellar.expert/explorer/testnet/tx/${txHash}`;
-    bot.sendMessage(booking.chatId,
+    bot.sendMessage(booking.chat_id,
       `🎉 <b>Your appointment is successfully booked!</b>\n\n` +
       `Your transaction has been recorded on the Stellar Testnet.\n\n` +
       `🔗 <a href="${explorerLink}">View Transaction on Stellar Expert</a>`,
@@ -84,6 +84,31 @@ const PORT = 5000;
 app.listen(PORT, async () => {
   console.log(`🚀 DecentraCare AI Backend running on port ${PORT}`);
   console.log(`🔗 Interface: http://localhost:${PORT}/chat`);
+
+  // --- Supabase Realtime listener for cross-device support ---
+  const { supabase } = await import("./services/supabase.js");
+  
+  supabase
+    .channel('telegram_confirmations')
+    .on('postgres_changes', { 
+      event: 'UPDATE', 
+      schema: 'public', 
+      table: 'telegram_bookings',
+      filter: 'status=eq.confirmed_onchain'
+    }, (payload) => {
+      const booking = payload.new;
+      if (booking && booking.chat_id && booking.tx_hash) {
+        console.log(`[Realtime] Sending confirmation to Chat ID: ${booking.chat_id}`);
+        const explorerLink = `https://stellar.expert/explorer/testnet/tx/${booking.tx_hash}`;
+        bot.sendMessage(booking.chat_id,
+          `🎉 <b>Your appointment is successfully booked!</b>\n\n` +
+          `Your transaction has been recorded on the Stellar Testnet.\n\n` +
+          `🔗 <a href="${explorerLink}">View Transaction on Stellar Expert</a>`,
+          { parse_mode: "HTML" }
+        ).catch(err => console.error("Notification Error:", err.message));
+      }
+    })
+    .subscribe();
 
   // Health Check for Ollama
   try {
@@ -100,4 +125,5 @@ app.listen(PORT, async () => {
     console.log("👉 Please start Ollama (Tray app or 'ollama serve') before using the AI Assistant.");
   }
 });
+
 
