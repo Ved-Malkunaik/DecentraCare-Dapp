@@ -5,6 +5,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { useWallet } from '../context/WalletContext';
 import { sorobanService } from '../services/sorobanService';
+import { supabase } from '../services/supabaseService';
 
 const FIXED_DOCTOR_ADDRESS = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
 const FIXED_DOCTOR_NAME = 'Dr. Vijay Bharne';
@@ -51,7 +52,23 @@ export default function ConfirmBooking() {
   const fetchBooking = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:5000/booking/${bookingId}`);
+      
+      // Try Supabase first (works on any device)
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('telegram_bookings')
+          .select('*')
+          .eq('id', bookingId)
+          .single();
+        
+        if (!error && data) {
+          setBooking(data);
+          return;
+        }
+      }
+
+      // Fallback to Backend API (for local testing)
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/booking/${bookingId}`);
       if (!res.ok) throw new Error("Booking not found");
       const data = await res.json();
       setBooking(data);
@@ -76,15 +93,31 @@ export default function ConfirmBooking() {
       // 1. Call Smart Contract
       const txResult = await sorobanService.bookAppointment(stellarAddress, FIXED_DOCTOR_ADDRESS);
 
-      // 2. Notify Backend
-      await fetch(`http://localhost:5000/confirm/${bookingId}`, {
-        method: "POST",
-        body: JSON.stringify({ 
-          wallet: stellarAddress,
-          txHash: txResult.hash 
-        }),
-        headers: { "Content-Type": "application/json" }
-      });
+      // 2. Notify Backend & Update Supabase
+      if (supabase) {
+        await supabase
+          .from('telegram_bookings')
+          .update({ 
+            status: 'confirmed_onchain',
+            wallet: stellarAddress,
+            tx_hash: txResult.hash 
+          })
+          .eq('id', bookingId);
+      }
+
+      // 3. (Optional) Notify Local Backend if reachable
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/confirm/${bookingId}`, {
+          method: "POST",
+          body: JSON.stringify({ 
+            wallet: stellarAddress,
+            txHash: txResult.hash 
+          }),
+          headers: { "Content-Type": "application/json" }
+        });
+      } catch (e) {
+        console.log("Backend notification skipped (offline)");
+      }
 
       setStatus('success');
       
@@ -217,3 +250,4 @@ export default function ConfirmBooking() {
     </div>
   );
 }
+
