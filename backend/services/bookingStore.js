@@ -1,25 +1,46 @@
-let bookings = {};
-let counter = 1;
+import { supabase } from "./supabase.js";
 
-export function createPendingBooking(data) {
-  const id = counter++;
-  bookings[id] = {
-    id,
-    ...data,
-    status: "pending_wallet_confirmation",
-    source: "telegram"
-  };
-  return bookings[id];
-}
+export async function createPendingBooking(data) {
+  const { data: booking, error } = await supabase
+    .from('telegram_bookings')
+    .insert([{
+      chat_id: data.chatId,
+      patient_name: data.name,
+      date: data.date,
+      time: data.time,
+      reason: data.reason,
+      status: 'pending_confirmation'
+    }])
+    .select()
+    .single();
 
-export function getBooking(id) {
-  return bookings[id];
-}
-
-export function markBookingConfirmed(id, wallet, txHash) {
-  if (bookings[id]) {
-    bookings[id].status = "confirmed_onchain";
-    bookings[id].wallet = wallet;
-    bookings[id].txHash = txHash;
+  if (error) {
+    console.error("Error creating booking:", error.message);
+    throw error;
   }
+  return booking;
+}
+
+export async function getBooking(id) {
+  const { data, error } = await supabase
+    .from('telegram_bookings')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) return null;
+  return data;
+}
+
+export async function markBookingConfirmed(id, wallet, txHash) {
+  const { error } = await supabase
+    .from('telegram_bookings')
+    .update({ 
+      status: 'confirmed_onchain',
+      wallet: wallet,
+      tx_hash: txHash
+    })
+    .eq('id', id);
+
+  if (error) console.error("Error confirming booking:", error.message);
 }
