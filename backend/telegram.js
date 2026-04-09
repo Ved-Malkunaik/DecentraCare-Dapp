@@ -19,7 +19,7 @@ bot.on("message", (msg) => {
   }
 
   // 2. Handle Booking Intent
-  if (text.includes("book an appointment")) {
+  if (text.includes("book an appointment") || text.includes("book appointment")) {
     return bot.sendMessage(chatId,
       "Please use the format to book an appointment:\n\n" +
       "<code>Date, Time, Reason</code>\n\n" +
@@ -76,10 +76,11 @@ bot.on("message", (msg) => {
     const greetings = ["hi", "hello", "hey", "start"];
     if (!greetings.includes(text) && !text.includes("book")) {
         // Optional: you could just ignore random talk, but let's give a friendly tip
-        return bot.sendMessage(chatId, "I'm here to help. To book a checkup, just say 'book an appointment'.");
+        return bot.sendMessage(chatId, "I'm here to help. To book a checkup, just say 'book appointment' or 'book an appointment'.");
     }
   }
 });
 
 console.log("Telegram Bot (DecentraCare_Bot) is running with Intent-Based Flow...");
+
 
