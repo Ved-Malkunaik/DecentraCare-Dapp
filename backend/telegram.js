@@ -44,7 +44,8 @@ bot.on("message", (msg) => {
       chatId: chatId 
     });
 
-    const dappURL = `https://decentra-care-dapp.vercel.app/confirm-booking?bookingId=${booking.id}`;
+    const frontendURL = process.env.FRONTEND_URL || "https://decentra-care-dapp.vercel.app";
+    const dappURL = `${frontendURL}/confirm-booking?bookingId=${booking.id}`;
 
     // We send as HTML first, and if Telegram 400s (due to localhost button restriction), 
     // we fallback to plain text which allows localhost links.
@@ -81,3 +82,4 @@ bot.on("message", (msg) => {
 });
 
 console.log("Telegram Bot (DecentraCare_Bot) is running with Intent-Based Flow...");
+
