@@ -4,7 +4,7 @@ import { createPendingBooking } from "./services/bookingStore.js";
 const token = "8576736347:AAHpy4gaU91jT8bpmgszSGRvNn0DZ8R7cRQ";
 export const bot = new TelegramBot(token, { polling: true });
 
-bot.on("message", (msg) => {
+bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text?.toLowerCase().trim();
 
@@ -36,7 +36,7 @@ bot.on("message", (msg) => {
     const rawTime = parts[1].trim();
     const rawReason = parts[2].replace(/[()]/g, "").trim();
 
-    const booking = createPendingBooking({
+    const booking = await createPendingBooking({
       name: "Stellar Patient",
       date: rawDate,
       time: rawTime,
@@ -82,5 +82,6 @@ bot.on("message", (msg) => {
 });
 
 console.log("Telegram Bot (DecentraCare_Bot) is running with Intent-Based Flow...");
+
 
 
