@@ -5,6 +5,7 @@ import Card from '../components/Card';
 import { useWallet } from '../context/WalletContext';
 import { sorobanService } from '../services/sorobanService';
 import dbService from '../services/supabaseService';
+import { safeFetch } from '../utils/api';
 
 export default function AIAssistant() {
   const { stellarAddress } = useWallet();
@@ -30,7 +31,7 @@ export default function AIAssistant() {
   }, [messages, loading]);
 
   const sendMessageToAI = async (message, history) => {
-    const res = await fetch("http://localhost:5000/chat", {
+    const { data, ok, error } = await safeFetch(`${import.meta.env.VITE_BACKEND_URL}/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -38,8 +39,8 @@ export default function AIAssistant() {
       body: JSON.stringify({ message, history })
     });
 
-    const data = await res.json();
-    return data.reply;
+    if (ok && data) return data.reply;
+    throw new Error(error || "AI Response was empty or invalid");
   };
 
   const handleSendMessage = async (e) => {

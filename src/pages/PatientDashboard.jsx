@@ -27,16 +27,17 @@ import {
   Copy,
   X
 } from 'lucide-react';
-import { useWallet } from '../context/WalletContext';
+import { useMultiWallet } from '../context/MultiWalletContext';
 import { sorobanService } from '../services/sorobanService';
 import { dbService } from '../services/supabaseService';
+import toast from 'react-hot-toast';
 
 const FIXED_DOCTOR_ADDRESS = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
 const FIXED_DOCTOR_NAME = 'Dr. Vijay Bharne';
 const FIXED_DOCTOR_QUAL = 'MBBS,MD';
 
 export default function PatientDashboard() {
-  const { stellarAddress } = useWallet();
+  const { activeAddress } = useMultiWallet();
   const [searchId, setSearchId] = useState('');
   const [status, setStatus] = useState('idle'); // idle | searching | found | error | pending | registering | booking
   const [isAccessGranted, setIsAccessGranted] = useState(false);
@@ -53,37 +54,28 @@ export default function PatientDashboard() {
   const [activeQr, setActiveQr] = useState(null);
   const [verifiedData, setVerifiedData] = useState(null);
 
-  // 1. Initial Access Check
-  useEffect(() => {
-    if (stellarAddress && doctorToManage) {
-      checkCurrentAccess();
-    }
-  }, [stellarAddress, doctorToManage]);
-
   const [recordHistory, setRecordHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [myConsultations, setMyConsultations] = useState([]);
   const [loadingConsultations, setLoadingConsultations] = useState(false);
 
   // 1. Initial Access & History Check
-  React.useEffect(() => {
-    if (stellarAddress) {
-      checkCurrentAccess();
+  useEffect(() => {
+    if (activeAddress) {
+      if (doctorToManage) checkCurrentAccess();
       fetchHistory();
       fetchConsultations();
     }
-  }, [stellarAddress]);
+  }, [activeAddress]);
 
   const fetchHistory = async () => {
+    if (!activeAddress || activeAddress.startsWith('0x')) return; // History is currently Stellar-specific
     try {
       setLoadingHistory(true);
-      const records = await sorobanService.getMedicalRecords(stellarAddress, stellarAddress);
-
+      const records = await sorobanService.getMedicalRecords(activeAddress, activeAddress);
       const hexRecords = (records || []).map(r => {
-        // Browser-safe hex conversion for Uint8Array
         return Array.from(r).map(b => b.toString(16).padStart(2, '0')).join('');
       });
-
       setRecordHistory(hexRecords.reverse().slice(0, 5));
     } catch (e) {
       console.warn("History fetch failed", e);
@@ -93,22 +85,22 @@ export default function PatientDashboard() {
   };
 
   const fetchConsultations = async () => {
+    if (!activeAddress) return;
     try {
       setLoadingConsultations(true);
-      const onChain = await sorobanService.getConsultationsByPatient(stellarAddress);
-
-      // Merge with Simulations
-      const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
-      const consultSimRaw = JSON.parse(consultSimStr);
+      
+      let onChain = [];
+      if (!activeAddress.startsWith('0x')) {
+        onChain = await sorobanService.getConsultationsByPatient(activeAddress);
+      }
 
       // Fetch from Database (Supabase)
-      const dbConsults = await dbService.getConsultationsByPatient(stellarAddress);
+      const dbConsults = await dbService.getConsultationsByPatient(activeAddress);
 
-      // Filter for current patient
-      const relevantSim = consultSimRaw.filter(c => c.patient === stellarAddress).map(c => ({
-        ...c,
-        prescription_id: c.prescription_id // In sim it's string, in on-chain it's Uint8Array
-      }));
+      // Filter for current patient simulation
+      const consultSimStr = localStorage.getItem('decentracare_sim_consults') || '[]';
+      const consultSimRaw = JSON.parse(consultSimStr);
+      const relevantSim = consultSimRaw.filter(c => c.patient === activeAddress);
 
       const combined = [...(onChain || []), ...dbConsults, ...relevantSim];
       setMyConsultations(combined);
@@ -120,8 +112,14 @@ export default function PatientDashboard() {
   };
 
   const checkCurrentAccess = async () => {
+    if (!activeAddress || activeAddress.startsWith('0x')) {
+        // For EVM we check Supabase instead of Soroban
+        const hasAccess = await dbService.checkAccess(activeAddress, doctorToManage);
+        setIsAccessGranted(hasAccess);
+        return;
+    }
     try {
-      const hasAccess = await sorobanService.checkAccess(stellarAddress, doctorToManage);
+      const hasAccess = await sorobanService.checkAccess(activeAddress, doctorToManage);
       setIsAccessGranted(hasAccess);
     } catch (e) {
       console.warn("Access check failed", e);
@@ -129,39 +127,49 @@ export default function PatientDashboard() {
   };
 
   const toggleAccess = async () => {
-    if (!stellarAddress || !doctorToManage) return;
+    if (!activeAddress || !doctorToManage) return;
 
     try {
       setStatus('pending');
       setErrorMsg('');
 
-      // Step A: Check Patient Registration
-      const isPatientReg = await sorobanService.checkRegistry(stellarAddress, false);
+      if (activeAddress.startsWith('0x')) {
+        // EVM Path: Virtual Access Grant
+        if (isAccessGranted) {
+            await dbService.revokeAccess(activeAddress, doctorToManage);
+            setIsAccessGranted(false);
+        } else {
+            await dbService.grantAccess(activeAddress, doctorToManage);
+            setIsAccessGranted(true);
+        }
+        setStatus('idle');
+        toast.success(isAccessGranted ? "Access Revoked" : "Access Granted");
+        return;
+      }
+
+      // Stellar Path: On-Chain Access Grant
+      const isPatientReg = await sorobanService.checkRegistry(activeAddress, false);
       if (!isPatientReg) {
-        console.log("Patient not found. Auto-registering...");
         setStatus('registering');
-        await sorobanService.registerUser(stellarAddress, "DecentraCare Patient", "0", false);
-        console.log("Patient registration successful.");
+        await sorobanService.registerUser(activeAddress, "DecentraCare Patient", "0", false);
         setStatus('pending');
       }
 
-      // Step B: Check Doctor Registration
       const isDoctorReg = await sorobanService.checkRegistry(doctorToManage, true);
       if (!isDoctorReg) {
-        throw new Error(`The doctor address (${doctorToManage.substring(0, 10)}...) is NOT registered. Only registered doctors can be granted access.`);
+        throw new Error(`Doctor not registered on-chain.`);
       }
 
       if (isAccessGranted) {
-        await sorobanService.revokeAccess(stellarAddress, doctorToManage);
+        await sorobanService.revokeAccess(activeAddress, doctorToManage);
         setIsAccessGranted(false);
       } else {
-        await sorobanService.grantAccess(stellarAddress, doctorToManage);
+        await sorobanService.grantAccess(activeAddress, doctorToManage);
         setIsAccessGranted(true);
       }
       setStatus('idle');
     } catch (error) {
-      console.error('Access toggle failed', error);
-      setErrorMsg(error.message || 'Failed to update access on blockchain.');
+      setErrorMsg(error.message || 'Action failed.');
       setStatus('error');
     }
   };
@@ -176,55 +184,47 @@ export default function PatientDashboard() {
     }
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-  };
-
   const handleBookAppointment = async (e) => {
     e.preventDefault();
-    if (!stellarAddress || !appointmentData.doctorAddr) return;
+    if (!activeAddress || !appointmentData.doctorAddr) return;
 
     try {
       setStatus('booking');
       setErrorMsg('');
       setBookingSuccess(false);
 
-      // 1. On-Chain Transaction (Triggers Freighter Popup)
-      const txResult = await sorobanService.bookAppointment(stellarAddress, appointmentData.doctorAddr);
-      setBookingTxHash(txResult.hash);
+      let txHashToSave = '';
+      const isEVM = activeAddress.startsWith('0x');
 
-      // 2. Mirror to Database (Supabase) for cross-user sync
+      if (isEVM) {
+        console.log("EVM Appointment booking...");
+        txHashToSave = `EVM_BOOK_${Math.random().toString(36).substring(2, 15)}`;
+        await new Promise(r => setTimeout(r, 1500));
+      } else {
+        const txResult = await sorobanService.bookAppointment(activeAddress, appointmentData.doctorAddr);
+        txHashToSave = txResult.hash;
+      }
+
+      setBookingTxHash(txHashToSave);
+
+      // 2. Mirror to Database
       await dbService.insertAppointment({
-        patient_wallet: stellarAddress,
+        patient_wallet: activeAddress,
         doctor_wallet: appointmentData.doctorAddr,
         date: appointmentData.date,
         reason: appointmentData.reason,
-        tx_hash: txResult.hash,
-        is_simulated: false
+        tx_hash: txHashToSave,
+        is_simulated: isEVM
       });
-      await dbService.grantAccess(stellarAddress, appointmentData.doctorAddr);
-
-      // 3. Local Simulation Sync (fallback for offline/demo)
-      const pendingSimStr = localStorage.getItem('decentracare_sim_pending') || '[]';
-      const pendingSim = JSON.parse(pendingSimStr);
-      pendingSim.push({
-        doctor: appointmentData.doctorAddr,
-        patient: stellarAddress,
-        date: appointmentData.date,
-        reason: appointmentData.reason,
-        timestamp: Date.now()
-      });
-      localStorage.setItem('decentracare_sim_pending', JSON.stringify(pendingSim));
+      await dbService.grantAccess(activeAddress, appointmentData.doctorAddr);
 
       setBookingSuccess(true);
       setIsAccessGranted(true);
       setDoctorToManage(appointmentData.doctorAddr);
       setStatus('idle');
-
-      // Keep success message visible and let user see the explorer link
+      toast.success("Appointment Booked!");
     } catch (error) {
-      console.error('Booking failed', error);
-      setErrorMsg(error.message || 'Failed to book appointment.');
+      setErrorMsg(error.message || 'Booking failed.');
       setStatus('error');
     }
   };

@@ -1,7 +1,15 @@
 import TelegramBot from "node-telegram-bot-api";
 import { createPendingBooking } from "./services/bookingStore.js";
 
-const token = "8576736347:AAHpy4gaU91jT8bpmgszSGRvNn0DZ8R7cRQ";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
+const token = process.env.TELEGRAM_BOT_TOKEN;
 export const bot = new TelegramBot(token, { polling: true });
 
 bot.on("message", async (msg) => {
@@ -44,8 +52,16 @@ bot.on("message", async (msg) => {
       chatId: chatId 
     });
 
-    const frontendURL = process.env.FRONTEND_URL || "https://decentra-care-dapp.vercel.app";
+    let frontendURL = process.env.FRONTEND_URL || "https://decentra-care-dapp.vercel.app";
+    
+    if (!booking || !booking.id) {
+      console.error("[TelegramBot] Failed to create booking record!");
+      return bot.sendMessage(chatId, "❌ Sorry, I couldn't create your booking record. Please try again later.");
+    }
+
     const dappURL = `${frontendURL}/confirm-booking?bookingId=${booking.id}`;
+    
+    console.log(`[TelegramBot] Created booking in DB: ${booking.id}`);
 
     // We send as HTML first, and if Telegram 400s (due to localhost button restriction), 
     // we fallback to plain text which allows localhost links.

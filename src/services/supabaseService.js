@@ -7,16 +7,26 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = 
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||             
   import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-const isConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+const isConfigured = !!(SUPABASE_URL && (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.length > 10));
+
+if (import.meta.env.DEV) {
+  console.log('[DecentraCare DB] Config Check:', {
+    hasURL: !!SUPABASE_URL,
+    hasKey: !!SUPABASE_ANON_KEY,     
+    keyLength: SUPABASE_ANON_KEY?.length,
+    configured: isConfigured
+  });
+}
+
 export const supabase = isConfigured
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-if (!isConfigured) {
-  console.warn('[DecentraCare DB] Supabase not configured. Running in localStorage-only mode.');
+if (!isConfigured && import.meta.env.DEV) {
+  console.warn('[DecentraCare DB] Supabase not configured. This usually means VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY are missing from your .env file or the dev server needs a restart.');
 }
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
@@ -36,18 +46,18 @@ export const dbService = {
    * Upsert a user (patient or doctor) by wallet address.
    * Called when a wallet connects for the first time.
    */
-  async upsertUser({ wallet_address, role, name = null }) {
+  async upsertUser({ wallet_address, role, name = null, evm_address = null }) {
     if (supabase) {
       const { error } = await supabase
         .from('users')
-        .upsert({ wallet_address, role, name }, { onConflict: 'wallet_address' });
+        .upsert({ wallet_address, role, name, evm_address }, { onConflict: 'wallet_address' });
       if (error) console.error('[DB] upsertUser error:', error.message);
     }
     // Mirror to localStorage
     const users = lsGet('dc_users');
     const idx = users.findIndex(u => u.wallet_address === wallet_address);
-    if (idx === -1) users.push({ wallet_address, role, name, created_at: new Date().toISOString() });
-    else users[idx] = { ...users[idx], role, name };
+    if (idx === -1) users.push({ wallet_address, role, name, evm_address, created_at: new Date().toISOString() });
+    else users[idx] = { ...users[idx], role, name, evm_address };
     lsSet('dc_users', users);
   },
 

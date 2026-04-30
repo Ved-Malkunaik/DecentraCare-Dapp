@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { useWallet } from "./WalletContext";
+import { useMultiWallet } from "./MultiWalletContext";
 import { sorobanService } from "../services/sorobanService";
 import { dbService } from "../services/supabaseService";
 
@@ -8,27 +8,29 @@ const RoleContext = createContext();
 export const useRole = () => useContext(RoleContext);
 
 export const RoleProvider = ({ children }) => {
-  const { walletAddress, isConnected } = useWallet();
+  const { stellarAddress, evmAddress, isStellarConnected } = useMultiWallet();
   const [role, setRole] = useState(null); // null meant fetching initial state
   const [loading, setLoading] = useState(false);
 
   // Expose fetchRole globally so registration pages can trigger re-checks
   const fetchRole = async () => {
-    if (!walletAddress) {
+    if (!stellarAddress) {
       setRole("none");
       return;
     }
-    
+
     try {
       setLoading(true);
-      const userRole = await sorobanService.getRole(walletAddress);
+      const userRole = await sorobanService.getRole(stellarAddress);
       const cleanRole = userRole === "none" ? "unregistered" : userRole;
       setRole(cleanRole);
 
       // Sync role state to Supabase for audit/backend trail
-      await dbService.upsertUser({ 
-          wallet_address: walletAddress, 
-          role: cleanRole === "unregistered" ? "none" : cleanRole 
+      // Primary ID is Stellar, EVM is linked
+      await dbService.upsertUser({
+        wallet_address: stellarAddress,
+        evm_address: evmAddress,
+        role: cleanRole === "unregistered" ? "none" : cleanRole
       });
     } catch (e) {
       console.error("Error fetching role", e);
@@ -39,18 +41,19 @@ export const RoleProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    if (isConnected && walletAddress) {
+    if (stellarAddress) {
       fetchRole();
-      
-      // Connection Diagnostic - Logs health status once per session
+
+      // Connection Diagnostic
       dbService.testConnection().then(res => {
-        if (res.success) console.log("%c[DB] Supabase Layer: Active & Responding ✅", "color: #10b981; font-weight: bold;");
-        else console.warn(`%c[DB] Supabase Layer: LocalStorage Fallback (%c${res.message}%c) ⚠️`, "color: #f59e0b; font-weight: bold;", "color: #f87171;", "color: #f59e0b; font-weight: bold;");
+        if (res.success) {
+          console.log("%c[DB] Supabase Layer: Active ✅", "color: #10b981; font-weight: bold;");
+        }
       });
     } else {
       setRole(null);
     }
-  }, [isConnected, walletAddress]);
+  }, [stellarAddress, evmAddress]); // Re-fetch/re-sync if either wallet changes
 
   return (
     <RoleContext.Provider value={{ role, fetchRole, loading }}>

@@ -19,12 +19,12 @@ import {
   Copy,
   ExternalLink
 } from 'lucide-react';
-import { useWallet } from '../context/WalletContext';
+import { useMultiWallet } from '../context/MultiWalletContext';
 import { sorobanService } from '../services/sorobanService';
 import { dbService } from '../services/supabaseService';
 
 export default function DoctorDashboard() {
-  const { stellarAddress, role } = useWallet();
+  const { activeAddress: stellarAddress, role } = useMultiWallet();
   const [formData, setFormData] = useState({
     patientAddr: '',
     medicines: '',
@@ -142,9 +142,9 @@ export default function DoctorDashboard() {
         ...simPendingPatients
       ];
 
-      // Filter unique and valid G... addresses (DRY principle)
+      // Filter unique and valid G... or 0x... addresses
       const uniquePatients = [...new Set(allPatients)]
-        .filter(p => p && p.startsWith('G'))
+        .filter(p => p && (p.startsWith('G') || p.startsWith('0x')))
         .sort();
 
       setAuthorizedPatients(uniquePatients);

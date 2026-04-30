@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
+import { Web3Provider } from './web3/Web3Provider.jsx';
+import { Toaster } from 'react-hot-toast';
 
 // Global Error Boundary — prevents any unhandled render error from showing a blank screen.
 class ErrorBoundary extends React.Component {
@@ -47,6 +49,15 @@ class ErrorBoundary extends React.Component {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <ErrorBoundary>
-    <App />
+    <Web3Provider>
+      <Toaster position="top-right" toastOptions={{
+        style: {
+          background: '#0f172a',
+          color: '#fff',
+          border: '1px solid #1e293b',
+        }
+      }} />
+      <App />
+    </Web3Provider>
   </ErrorBoundary>,
 );

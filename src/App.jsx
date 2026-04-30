@@ -7,7 +7,7 @@ import DoctorDashboard from './pages/DoctorDashboard';
 import PatientDashboard from './pages/PatientDashboard';
 import AIAssistant from './pages/AIAssistant';
 
-import { WalletProvider, useWallet } from './context/WalletContext';
+import { MultiWalletProvider, useMultiWallet } from './context/MultiWalletContext';
 import { RoleProvider } from './context/RoleContext';
 import RoleSelection from './pages/RoleSelection';
 import ConfirmBooking from './pages/ConfirmBooking';
@@ -15,12 +15,12 @@ import ConfirmBooking from './pages/ConfirmBooking';
 const AUTHORIZED_DOCTOR = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
 
 const ProtectedRoute = ({ children, allowedRole = null }) => {
-  const { stellarAddress } = useWallet();
+  const { activeAddress } = useMultiWallet();
   
-  if (!stellarAddress) return <Navigate to="/" />;
+  if (!activeAddress) return <Navigate to="/" />;
   
   // Special check for Doctor Page
-  if (allowedRole === 'doctor' && stellarAddress !== AUTHORIZED_DOCTOR) {
+  if (allowedRole === 'doctor' && activeAddress !== AUTHORIZED_DOCTOR) {
       return (
           <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center animate-in fade-in zoom-in duration-500">
               <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 border border-rose-500/20">
@@ -45,11 +45,11 @@ const ProtectedRoute = ({ children, allowedRole = null }) => {
 function App() {
   return (
     <Router>
-      <WalletProvider>
+      <MultiWalletProvider>
         <RoleProvider>
           <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30">
             <Navbar />
-            <main className="container mx-auto px-4 py-8">
+            <main className="w-full">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/select-role" element={<RoleSelection />} />
@@ -65,7 +65,7 @@ function App() {
           </footer>
         </div>
         </RoleProvider>
-      </WalletProvider>
+      </MultiWalletProvider>
     </Router>
   );
 }

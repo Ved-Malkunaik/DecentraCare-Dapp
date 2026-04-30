@@ -5,20 +5,21 @@ import {
   Stethoscope, 
   User, 
   ShieldCheck, 
-  ClipboardCheck,
-  ArrowRight
+  ArrowRight,
+  Globe,
+  Zap
 } from 'lucide-react';
-import { useWallet } from '../context/WalletContext';
+import { useMultiWallet } from '../context/MultiWalletContext';
 import { dbService } from '../services/supabaseService';
 
 const AUTHORIZED_DOCTOR = 'GDK7TWNN3H57JWZBBC4V3BQNI3NTHSUDEVDZB5DGPPCULFJRIP3APG42';
 
 export default function RoleSelection() {
-  const { stellarAddress, connectWallet } = useWallet();
+  const { activeAddress, stellarAddress } = useMultiWallet();
   const navigate = useNavigate();
   const [errorMsg, setErrorMsg] = React.useState('');
 
-  if (!stellarAddress) return <Navigate to="/" />;
+  if (!activeAddress) return <Navigate to="/" />;
 
   const roles = [
     {
@@ -41,18 +42,14 @@ export default function RoleSelection() {
 
   const handleDoctorNav = async () => {
     setErrorMsg('');
-    if (!stellarAddress) {
-        await connectWallet();
+    
+    // For this demo, only the specific Stellar address is whitelisted as a doctor
+    if (activeAddress !== AUTHORIZED_DOCTOR) {
+        setErrorMsg(`Doctor Access Denied. Whitelist required for this role.`);
         return;
     }
     
-    if (stellarAddress !== AUTHORIZED_DOCTOR) {
-        setErrorMsg(`Doctor Access Denied. Whitelist required.`);
-        // Don't navigate
-        return;
-    }
-    
-    await dbService.upsertUser({ wallet_address: stellarAddress, role: 'doctor', name: 'Dr. Vijay Bharne' });
+    await dbService.upsertUser({ wallet_address: activeAddress, role: 'doctor', name: 'Dr. Vijay Bharne' });
     navigate('/doctor');
   };
 
@@ -63,7 +60,7 @@ export default function RoleSelection() {
           Select Your Portal
         </h1>
         <p className="text-slate-400 text-lg max-w-2xl mx-auto font-medium">
-          Navigate directly to your dedicated dashboard. No additional verification required for this demo.
+          Navigate directly to your dedicated dashboard using your connected wallet.
         </p>
       </div>
 
@@ -75,11 +72,11 @@ export default function RoleSelection() {
                 if (role.id === 'doctor') {
                     await handleDoctorNav();
                 } else {
-                    await dbService.upsertUser({ wallet_address: stellarAddress, role: 'patient' });
+                    await dbService.upsertUser({ wallet_address: activeAddress, role: 'patient' });
                     navigate(role.path);
                 }
             }}
-            className={`p-8 border-2 border-slate-900 bg-slate-900/40 hover:bg-slate-900/80 transition-all cursor-pointer group hover:scale-[1.05] hover:border-slate-700 relative overflow-hidden ${role.id === 'doctor' && stellarAddress !== AUTHORIZED_DOCTOR && stellarAddress ? 'opacity-70 saturate-50' : ''}`}
+            className={`p-8 border-2 border-slate-900 bg-slate-900/40 hover:bg-slate-900/80 transition-all cursor-pointer group hover:scale-[1.05] hover:border-slate-700 relative overflow-hidden ${role.id === 'doctor' && activeAddress !== AUTHORIZED_DOCTOR ? 'opacity-70 saturate-50' : ''}`}
           >
             <div className={`absolute top-0 left-0 w-1 h-full bg-${role.color}-500 opacity-0 group-hover:opacity-100 transition-opacity`} />
             
@@ -108,24 +105,25 @@ export default function RoleSelection() {
         ))}
       </div>
 
-      <div className="mt-20 p-8 rounded-3xl bg-slate-900/20 border border-slate-900 flex flex-col md:flex-row items-center justify-between gap-8 relative">
+      <div className="mt-20 p-8 rounded-3xl bg-slate-900/20 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-purple-500/5" />
           {errorMsg && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-6 w-full max-w-sm px-6 py-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center gap-3 text-rose-500 animate-in slide-in-from-bottom-2 duration-300">
                   <ShieldCheck className="w-5 h-5 flex-shrink-0" />
                   <p className="text-xs font-bold uppercase tracking-tight">{errorMsg}</p>
               </div>
           )}
-          <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6 text-emerald-500" />
+          <div className="flex items-center gap-4 relative z-10">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${activeAddress.startsWith('0x') ? 'bg-purple-500/20' : 'bg-cyan-500/20'}`}>
+                  {activeAddress.startsWith('0x') ? <Globe className="w-6 h-6 text-purple-500" /> : <Zap className="w-6 h-6 text-cyan-500" />}
               </div>
               <div>
-                  <h4 className="font-bold text-slate-200 uppercase tracking-tight text-sm">Wallet Connected</h4>
-                  <p className="text-xs font-mono text-slate-500">{stellarAddress}</p>
+                  <h4 className="font-bold text-slate-200 uppercase tracking-tight text-sm">Identity Linked</h4>
+                  <p className="text-xs font-mono text-slate-500 truncate max-w-[200px] sm:max-w-none">{activeAddress}</p>
               </div>
           </div>
-          <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest italic">
-              Powered by Stellar Soroban & Zero-Knowledge SNARKs
+          <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest italic relative z-10">
+              Multi-Chain Protocol: {activeAddress.startsWith('0x') ? 'Ethereum/EVM' : 'Stellar Soroban'}
           </div>
       </div>
     </div>
